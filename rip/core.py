@@ -18,7 +18,6 @@ from tqdm import tqdm
 from streamrip.clients import (
     Client,
     QobuzClient,
-    SoundCloudClient,
     TidalClient,
 )
 from streamrip.constants import MEDIA_TYPES
@@ -51,7 +50,6 @@ from .constants import (
     FAILED_DB_PATH,
     LASTFM_URL_REGEX,
     QOBUZ_INTERPRETER_URL_REGEX,
-    SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
     YOUTUBE_URL_REGEX,
 )
@@ -87,7 +85,6 @@ class RipCore(list):
     clients = {
         "qobuz": QobuzClient(),
         "tidal": TidalClient(),
-        "soundcloud": SoundCloudClient(),
     }
 
     def __init__(
@@ -186,10 +183,6 @@ class RipCore(list):
         :type item_id: str
         """
         client = self.get_client(source)
-
-        if media_type not in MEDIA_TYPES:
-            if "playlist" in media_type:  # for SoundCloud
-                media_type = "playlist"
 
         assert media_type in MEDIA_TYPES, media_type
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
@@ -389,16 +382,6 @@ class RipCore(list):
                 self.config.file["qobuz"]["secrets"],
             ) = client.get_tokens()
             self.config.save()
-        elif (
-            client.source == "soundcloud"
-            and not creds.get("client_id")
-            and not creds.get("app_version")
-        ):
-            (
-                self.config.file["soundcloud"]["client_id"],
-                self.config.file["soundcloud"]["app_version"],
-            ) = client.get_tokens()
-            self.config.save()
 
         elif client.source == "tidal":
             self.config.file["tidal"].update(client.get_tokens())
@@ -432,21 +415,6 @@ class RipCore(list):
             url = QOBUZ_INTERPRETER_URL_REGEX.sub("", url)
 
         parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal
-        soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
-
-        if soundcloud_urls:
-            soundcloud_client = self.get_client("soundcloud")
-            assert isinstance(soundcloud_client, SoundCloudClient)  # for typing
-
-            # TODO: Make this async
-            soundcloud_items = (
-                soundcloud_client.resolve_url(u) for u in soundcloud_urls
-            )
-
-            parsed.extend(
-                ("soundcloud", item["kind"], str(item["id"]))
-                for item in soundcloud_items
-            )
 
         logger.debug("Parsed urls: %s", parsed)
 
@@ -466,7 +434,6 @@ class RipCore(list):
         QUERY_FORMAT: Dict[str, str] = {
             "tidal": "{title}",
             "qobuz": "{title} {artist}",
-            "soundcloud": "{title} {artist}",
         }
 
         # For testing:

@@ -278,8 +278,6 @@ class Track(Media):
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        if not self.part_of_tracklist and not self.client.source == "soundcloud":
-            secho(f"Downloading {self!s}\n", bold=True)
 
         self._prepare_download(
             quality=quality,
@@ -288,11 +286,7 @@ class Track(Media):
             **kwargs,
         )
 
-        if self.client.source == "soundcloud":
-            # soundcloud client needs whole dict to get file url
-            url_id = self.resp
-        else:
-            url_id = self.id
+        url_id = self.id
 
         try:
             dl_info = self.client.get_file_url(url_id, self.quality)
@@ -324,9 +318,6 @@ class Track(Media):
                 raise NonStreamable
 
             _quick_download(download_url, self.path, desc=self._progress_desc)
-
-        elif self.client.source == "soundcloud":
-            self._soundcloud_download(dl_info)
 
         else:
             raise InvalidSourceError(self.client.source)
@@ -383,52 +374,6 @@ class Track(Media):
             shutil.move(self.path, path)
 
         self.path = path
-
-    def _soundcloud_download(self, dl_info: dict):
-        """Download a soundcloud track.
-
-        This requires a seperate function because there are three methods that
-        can be used to download a track:
-            * original file downloads
-            * direct mp3 downloads
-            * hls stream ripping
-        All three of these need special processing.
-
-        :param dl_info:
-        :type dl_info: dict
-        :rtype: str
-        """
-        # logger.debug("dl_info: %s", dl_info)
-        if dl_info["type"] == "mp3":
-            import m3u8
-            import requests
-
-            parsed_m3u = m3u8.loads(
-                requests.get(dl_info["url"]).content.decode("utf-8")
-            )
-            self.path += ".mp3"
-
-            with DownloadPool(segment.uri for segment in parsed_m3u.segments) as pool:
-
-                bar = get_tqdm_bar(len(pool), desc=self._progress_desc, unit="Chunk")
-
-                def update_tqdm_bar():
-                    bar.update(1)
-
-                pool.download(callback=update_tqdm_bar)
-
-                concat_audio_files(pool.files, self.path, "mp3")
-
-        elif dl_info["type"] == "original":
-            _quick_download(dl_info["url"], self.path, desc=self._progress_desc)
-
-            # if a wav is returned, convert to flac
-            engine = converter.FLAC(self.path)
-            self.path = f"{self.path}.flac"
-            engine.convert(custom_fn=self.path)
-
-            self.final_path = self.final_path.replace(".mp3", ".flac")
-            self.quality = 2
 
     @property
     def type(self) -> str:
@@ -511,11 +456,6 @@ class Track(Media):
                 cover_url = item["album"]["image"]["large"]
             elif client.source == "tidal":
                 cover_url = tidal_cover_url(item["album"]["cover"], 640)
-            elif client.source == "soundcloud":
-                if (small_url := item["artwork_url"]) is not None:
-                    cover_url = small_url.replace("large", "t500x500")
-                else:
-                    raise KeyError
             else:
                 raise InvalidSourceError(client.source)
 
@@ -1156,10 +1096,7 @@ class Tracklist(list):
 
         else:
             for item in self:
-                if self.client.source != "soundcloud":
-                    # soundcloud only gets metadata after `target` is called
-                    # message will be printed in `target`
-                    secho(f'\nDownloading "{item!s}"', bold=True, fg="green")
+                secho(f'\nDownloading "{item!s}"', bold=True, fg="green")
                 try:
                     target(item, **kwargs)
                 except ItemExists:
@@ -1443,9 +1380,6 @@ class Album(Tracklist, Media):
         :param client:
         :type client: Client
         """
-        if client.source == "soundcloud":
-            return Playlist.from_api(resp, client)
-
         info = cls._parse_get_resp(resp, client)
         return cls(client, **info.asdict())
 
@@ -1775,40 +1709,28 @@ class Playlist(Tracklist, Media):
                     "source": self.client.source,
                 }
 
-        elif self.client.source == "soundcloud":
-            self.name = self.meta["title"]
-            # self.image = self.meta.get("artwork_url").replace("large", "t500x500")
-            self.creator = self.meta["user"]["username"]
-            tracklist = self.meta["tracks"]
-
         else:
             raise NotImplementedError
 
         self.tracktotal = len(tracklist)
-        if self.client.source == "soundcloud":
-            # No meta is included in soundcloud playlist
-            # response, so it is loaded at download time
-            for track in tracklist:
-                self.append(Track(self.client, id=track["id"]))
-        else:
-            for track in tracklist:
-                meta = TrackMetadata(track=track, source=self.client.source)
-                cover_urls = get_cover_urls(track["album"], self.client.source)
-                cover_url = (
-                    cover_urls[kwargs.get("embed_cover_size", "large")]
-                    if cover_urls is not None
-                    else None
-                )
+        for track in tracklist:
+            meta = TrackMetadata(track=track, source=self.client.source)
+            cover_urls = get_cover_urls(track["album"], self.client.source)
+            cover_url = (
+                cover_urls[kwargs.get("embed_cover_size", "large")]
+                if cover_urls is not None
+                else None
+            )
 
-                self.append(
-                    Track(
-                        self.client,
-                        id=track.get("id"),
-                        meta=meta,
-                        cover_url=cover_url,
-                        part_of_tracklist=True,
-                    )
+            self.append(
+                Track(
+                    self.client,
+                    id=track.get("id"),
+                    meta=meta,
+                    cover_url=cover_url,
+                    part_of_tracklist=True,
                 )
+            )
 
         logger.debug("Loaded %d tracks from playlist %s", len(self), self.name)
 
@@ -1828,8 +1750,6 @@ class Playlist(Tracklist, Media):
         assert isinstance(item, Track)
 
         kwargs["parent_folder"] = self.folder
-        if self.client.source == "soundcloud":
-            item.load_meta()
 
         if kwargs.get("set_playlist_to_album", False):
             item.meta.album = self.name
@@ -1866,14 +1786,6 @@ class Playlist(Tracklist, Media):
             return {
                 "name": item["title"],
                 "id": item["uuid"],
-            }
-        elif client.source == "soundcloud":
-            return {
-                "name": item["title"],
-                "id": item["permalink_url"],
-                "description": item["description"],
-                "popularity": f"{item['likes_count']} likes",
-                "tracktotal": len(item["tracks"]),
             }
 
         raise InvalidSourceError(client.source)

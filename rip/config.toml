@@ -44,13 +44,6 @@ refresh_token = ""
 # in again using `rip config --tidal`
 token_expiry = ""
 
-[soundcloud]
-# Only 0 is available for now
-quality = 0
-# This changes periodically, so it needs to be updated
-client_id = ""
-app_version = ""
-
 [youtube]
 # Only 0 is available for now
 quality = 0

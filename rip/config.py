@@ -187,12 +187,6 @@ class Config:
             return self.qobuz_creds
         if source == "tidal":
             return self.tidal_creds
-        if source == "soundcloud":
-            soundcloud = self.file["soundcloud"]
-            return {
-                "client_id": soundcloud["client_id"],
-                "app_version": soundcloud["app_version"],
-            }
 
         raise InvalidSourceError(source)
 

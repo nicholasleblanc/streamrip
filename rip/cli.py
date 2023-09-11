@@ -30,7 +30,7 @@ class DownloadCommand(Command):
     arguments = [
         argument(
             "urls",
-            "One or more Qobuz, Tidal, or SoundCloud urls",
+            "One or more Qobuz or Tidal urls",
             optional=True,
             multiple=True,
         )
@@ -169,7 +169,7 @@ class SearchCommand(Command):
         option(
             "source",
             "-s",
-            "Qobuz, Tidal, or Soundcloud",
+            "Qobuz or Tidal",
             flag=False,
             default="qobuz",
         ),

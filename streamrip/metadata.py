@@ -194,8 +194,6 @@ class TrackMetadata:
             if q := resp.get("audioQuality"):  # for album entries in single tracks
                 self._get_tidal_quality(q)
 
-        elif self.__source == "soundcloud":
-            raise NotImplementedError
         else:
             raise InvalidSourceError(self.__source)
 
@@ -220,20 +218,6 @@ class TrackMetadata:
             self.discnumber = track.get("volumeNumber", 1)
             self.artist = track.get("artist", {}).get("name")
             self._get_tidal_quality(track["audioQuality"])
-
-        elif self.__source == "soundcloud":
-            self.title = track["title"].strip()
-            self.genre = track["genre"]
-            self.artist = self.albumartist = track["user"]["username"]
-            self.year = track["created_at"][:4]
-            self.label = track["label_name"]
-            self.description = track["description"]
-            self.album = safe_get(track, "publisher_metadata", "album_title")
-            self.copyright = safe_get(track, "publisher_metadata", "p_line")
-            self.tracknumber = 0
-            self.tracktotal = 0
-            self.quality = 0
-            self.cover_urls = get_cover_urls(track, "soundcloud")
 
         else:
             raise ValueError(self.__source)

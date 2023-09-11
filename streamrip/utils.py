@@ -375,15 +375,6 @@ def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
             for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
         }
 
-    if source == "soundcloud":
-        cover_url = (resp["artwork_url"] or resp["user"].get("avatar_url")).replace(
-            "large", "t500x500"
-        )
-
-        cover_urls = {"large": cover_url}
-
-        return cover_urls
-
     raise InvalidSourceError(source)
 
 

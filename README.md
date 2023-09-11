@@ -3,14 +3,14 @@
 [![Downloads](https://pepy.tech/badge/streamrip)](https://pepy.tech/project/streamrip)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
-A scriptable stream downloader for Qobuz, Tidal, and SoundCloud.
+A scriptable stream downloader for Qobuz, and Tidal.
 
 ![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
 ## Features
 
 - Super fast, as it utilizes concurrent downloads and conversion
-- Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, and SoundCloud
+- Downloads tracks, albums, playlists, discographies, and labels from Qobuz and Tidal
 - Supports downloads of Spotify and Apple Music playlists through [last.fm](https://www.last.fm)
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
@@ -33,7 +33,7 @@ rip
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
 
-If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
+If you would like to use `streamrip`'s conversion capabilities or download TIDAL videos, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
 ### Streamrip beta
 
@@ -68,22 +68,16 @@ rip url --codec mp3 https://open.qobuz.com/album/0060253780968
 
 To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
 
-| Quality ID | Audio Quality         | Available Sources                       |
-| ---------- | --------------------- | --------------------------------------- |
-| 0          | 128 kbps MP3 or AAC   | Tidal, SoundCloud (most of the time)    |
-| 1          | 320 kbps MP3 or AAC   | Tidal, Qobuz, SoundCloud (rarely)       |
-| 2          | 16 bit, 44.1 kHz (CD) | Tidal, Qobuz, SoundCloud (rarely)       |
-| 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz, SoundCloud (rarely) |
-| 4          | 24 bit, ≤ 192 kHz     | Qobuz                                   |
+| Quality ID | Audio Quality         | Available Sources  |
+| ---------- | --------------------- | ------------------ |
+| 0          | 128 kbps MP3 or AAC   | Tidal,             |
+| 1          | 320 kbps MP3 or AAC   | Tidal, Qobuz       |
+| 2          | 16 bit, 44.1 kHz (CD) | Tidal, Qobuz       |
+| 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz |
+| 4          | 24 bit, ≤ 192 kHz     | Qobuz              |
 
 ```bash
 rip url --max-quality 3 https://tidal.com/browse/album/147569387
-```
-
-Search for albums matching `lil uzi vert` on SoundCloud
-
-```bash
-rip search --source soundcloud 'lil uzi vert'
 ```
 
 ![streamrip interactive search](https://github.com/nathom/streamrip/blob/dev/demo/album_search.png?raw=true)
