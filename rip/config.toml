@@ -135,14 +135,6 @@ restrict_characters = false
 truncate = true
 
 
-# Last.fm playlists are downloaded by searching for the titles of the tracks
-[lastfm]
-# The source on which to search for the tracks.
-source = "qobuz"
-# If no results were found with the primary source, the item is searched for
-# on this one.
-fallback_source = "tidal"
-
 [theme]
 # Options: "dainty" or "plain"
 progress_bar = "dainty"

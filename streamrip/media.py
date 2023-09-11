@@ -43,7 +43,6 @@ from .metadata import TrackMetadata
 from .utils import (
     clean_filename,
     clean_format,
-    concat_audio_files,
     decrypt_mqa_file,
     downsize_image,
     ext,
@@ -197,7 +196,7 @@ class Track(Media):
     def load_meta(self, **kwargs):
         """Send a request to the client to get metadata for this Track.
 
-        Usually only called for single tracks and last.fm playlists.
+        Usually only called for single tracks.
         """
         assert self.id is not None, "id must be set before loading metadata"
 

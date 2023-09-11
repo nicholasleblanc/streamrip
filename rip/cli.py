@@ -297,48 +297,6 @@ class DiscoverCommand(Command):
         return 0
 
 
-class LastfmCommand(Command):
-    name = "lastfm"
-    description = "Search for tracks from a last.fm playlist and download them."
-
-    arguments = [
-        argument(
-            "urls",
-            "Last.fm playlist urls",
-            optional=False,
-            multiple=True,
-        )
-    ]
-    options = [
-        option(
-            "source",
-            "-s",
-            description="The source to search for items on",
-            flag=False,
-            default="qobuz",
-        ),
-    ]
-    help = (
-        "You can use this command to download Spotify, Apple Music, and YouTube "
-        "playlists.\nTo get started, create an account at "
-        "<url>https://www.last.fm</url>. Once you have\nreached the home page, "
-        "go to <path>Profile Icon</path> => <path>View profile</path> => "
-        "<path>Playlists</path> => <path>IMPORT</path>\nand paste your url.\n\n"
-        "Download the <info>young & free</info> Apple Music playlist (already imported)\n"
-        "$ <cmd>rip lastfm https://www.last.fm/user/nathan3895/playlists/12089888</cmd>\n"
-    )
-
-    def handle(self):
-        source = self.option("source")
-        urls = self.argument("urls")
-
-        config = Config()
-        core = RipCore(config)
-        config.session["lastfm"]["source"] = source
-        core.handle_lastfm_urls(";".join(urls))
-        core.download()
-
-
 class ConfigCommand(Command):
     name = "config"
     description = "Manage the configuration file."
@@ -791,7 +749,6 @@ def main():
     application.add(DownloadCommand())
     application.add(SearchCommand())
     application.add(DiscoverCommand())
-    application.add(LastfmCommand())
     application.add(ConfigCommand())
     application.add(ConvertCommand())
     application.add(RepairCommand())

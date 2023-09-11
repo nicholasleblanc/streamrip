@@ -11,7 +11,6 @@ A scriptable stream downloader for Qobuz, and Tidal.
 
 - Super fast, as it utilizes concurrent downloads and conversion
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz and Tidal
-- Supports downloads of Spotify and Apple Music playlists through [last.fm](https://www.last.fm)
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
@@ -92,12 +91,6 @@ Want to find some new music? Use the `discover` command (only on Qobuz)
 
 ```bash
 rip discover --list 'best-sellers'
-```
-
-Download a last.fm playlist using the lastfm command
-
-```
-rip lastfm https://www.last.fm/user/nathan3895/playlists/12126195
 ```
 
 For extreme customization, see the config file

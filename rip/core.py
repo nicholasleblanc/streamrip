@@ -1,19 +1,14 @@
 """The stuff that ties everything together for the CLI to use."""
 
-import concurrent.futures
-import html
 import logging
 import os
-import re
 import threading
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
-import requests
-from click import secho, style
-from tqdm import tqdm
+from click import secho
 
 from streamrip.clients import (
     Client,
@@ -48,7 +43,6 @@ from .constants import (
     CONFIG_PATH,
     DB_PATH,
     FAILED_DB_PATH,
-    LASTFM_URL_REGEX,
     QOBUZ_INTERPRETER_URL_REGEX,
     URL_REGEX,
     YOUTUBE_URL_REGEX,
@@ -152,15 +146,7 @@ class RipCore(list):
 
         parsed = self.parse_urls(url)
         if not parsed and len(self) == 0:
-            if "last.fm" in url:
-                message = (
-                    f"For last.fm urls, use the {style('lastfm', fg='yellow')} "
-                    f"command. See {style('rip lastfm --help', fg='yellow')}."
-                )
-            else:
-                message = f"Cannot find urls in text: {url}"
-
-            raise ParsingError(message)
+            raise ParsingError(f"Cannot find urls in text: {url}")
 
         for source, url_type, item_id in parsed:
             if item_id in self.db:
@@ -420,125 +406,6 @@ class RipCore(list):
 
         return parsed
 
-    def handle_lastfm_urls(self, urls: str):
-        """Get info from lastfm url, and parse into Media objects.
-
-        This works by scraping the last.fm page and using a regex to
-        find the track titles and artists. The information is queried
-        in a Client.search(query, 'track') call and the first result is
-        used.
-
-        :param urls:
-        """
-        # Available keys: ['artist', 'title']
-        QUERY_FORMAT: Dict[str, str] = {
-            "tidal": "{title}",
-            "qobuz": "{title} {artist}",
-        }
-
-        # For testing:
-        # https://www.last.fm/user/nathan3895/playlists/12058911
-        user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
-        lastfm_urls = LASTFM_URL_REGEX.findall(urls)
-        try:
-            lastfm_source = self.config.session["lastfm"]["source"]
-            lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
-        except KeyError:
-            self._config_updating_message()
-            self.config.update()
-            exit()
-        except Exception as err:
-            self._config_corrupted_message(err)
-            exit()
-
-        # Do not include tracks that have (re)mix, live, karaoke in their titles
-        # within parentheses or brackets
-        # This will match somthing like "Test (Person Remix]" though, so its not perfect
-        banned_words_plain = re.compile(r"(?i)(?:(?:re)?mix|live|karaoke)")
-        banned_words = re.compile(
-            r"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
-        )
-
-        def search_query(title, artist, playlist) -> bool:
-            """Search for a query and add the first result to playlist.
-
-            :param query:
-            :type query: str
-            :param playlist:
-            :type playlist: Playlist
-            :rtype: bool
-            """
-
-            def try_search(source) -> Optional[Track]:
-                try:
-                    query = QUERY_FORMAT[lastfm_source].format(
-                        title=title, artist=artist
-                    )
-                    query_is_clean = banned_words_plain.search(query) is None
-
-                    search_results = self.search(source, query, media_type="track")
-                    track = next(search_results)
-
-                    if query_is_clean:
-                        while banned_words.search(track["title"]) is not None:
-                            logger.debug("Track title banned for query=%s", query)
-                            track = next(search_results)
-
-                    # Because the track is searched as a single we need to set
-                    # this manually
-                    track.part_of_tracklist = True
-                    return track
-                except (NoResultsFound, StopIteration):
-                    return None
-
-            track = try_search(lastfm_source) or try_search(lastfm_fallback_source)
-            if track is None:
-                return False
-
-            if self.config.session["metadata"]["set_playlist_to_album"]:
-                # so that the playlist name (actually the album) isn't
-                # amended to include version and work tags from individual tracks
-                track.meta.version = track.meta.work = None
-
-            playlist.append(track)
-            return True
-
-        from streamrip.utils import TQDM_BAR_FORMAT
-
-        for purl in lastfm_urls:
-            secho(f"Fetching playlist at {purl}", fg="blue")
-            title, queries = self.get_lastfm_playlist(purl)
-
-            pl = Playlist(client=self.get_client(lastfm_source), name=title)
-            creator_match = user_regex.search(purl)
-            if creator_match is not None:
-                pl.creator = creator_match.group(1)
-
-            tracks_not_found = 0
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-                futures = [
-                    executor.submit(search_query, title, artist, pl)
-                    for title, artist in queries
-                ]
-                # only for the progress bar
-                for search_attempt in tqdm(
-                    concurrent.futures.as_completed(futures),
-                    unit="Tracks",
-                    dynamic_ncols=True,
-                    total=len(futures),
-                    desc="Searching...",
-                    bar_format=TQDM_BAR_FORMAT,
-                ):
-                    if not search_attempt.result():
-                        tracks_not_found += 1
-
-            pl.loaded = True
-
-            if tracks_not_found > 0:
-                secho(f"{tracks_not_found} tracks not found.", fg="yellow")
-
-            self.append(pl)
-
     def handle_txt(self, filepath: Union[str, os.PathLike]):
         """
         Handle a text file containing URLs. Lines starting with `#` are ignored.
@@ -750,70 +617,6 @@ class RipCore(list):
                     for i in choice:
                         self.append(results[i])
                 return True
-
-    def get_lastfm_playlist(self, url: str) -> Tuple[str, list]:
-        """From a last.fm url, find the playlist title and tracks.
-
-        Each page contains 50 results, so `num_tracks // 50 + 1` requests
-        are sent per playlist.
-
-        :param url:
-        :type url: str
-        :rtype: Tuple[str, list]
-        """
-        logger.debug("Fetching lastfm playlist")
-
-        info = []
-        words = re.compile(r"[\w\s]+")
-        title_tags = re.compile(r'<a\s+href="[^"]+"\s+title="([^"]+)"')
-
-        def essence(s):
-            s = re.sub(r"&#\d+;", "", s)  # remove HTML entities
-            # TODO: change to finditer
-            return "".join(words.findall(s))
-
-        def get_titles(s):
-            titles = title_tags.findall(s)  # [2:]
-            for i in range(0, len(titles) - 1, 2):
-                info.append((essence(titles[i]), essence(titles[i + 1])))
-
-        r = requests.get(url)
-        get_titles(r.text)
-        remaining_tracks_match = re.search(
-            r'data-playlisting-entry-count="(\d+)"', r.text
-        )
-        if remaining_tracks_match is None:
-            raise ParsingError("Error parsing lastfm page: %s", r.text)
-
-        total_tracks = int(remaining_tracks_match.group(1))
-        logger.debug("Total tracks: %d", total_tracks)
-        remaining_tracks = total_tracks - 50
-
-        playlist_title_match = re.search(
-            r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>',
-            r.text,
-        )
-        if playlist_title_match is None:
-            raise ParsingError("Error finding title from response")
-
-        playlist_title = html.unescape(playlist_title_match.group(1))
-
-        if remaining_tracks > 0:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-                last_page = (
-                    1 + int(remaining_tracks // 50) + int(remaining_tracks % 50 != 0)
-                )
-                logger.debug("Fetching up to page %d", last_page)
-
-                futures = [
-                    executor.submit(requests.get, f"{url}?page={page}")
-                    for page in range(2, last_page + 1)
-                ]
-
-            for future in concurrent.futures.as_completed(futures):
-                get_titles(future.result().text)
-
-        return playlist_title, info
 
     def __get_source_subdir(self, source: str) -> str:
         path = self.config.session["downloads"]["folder"]
