@@ -91,10 +91,6 @@ class BadEncoderOption(Exception):
     """BadEncoderOption."""
 
 
-class ConversionError(Exception):
-    """ConversionError."""
-
-
 class NoResultsFound(Exception):
     """NoResultsFound."""
 

@@ -27,7 +27,6 @@ from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filepath
 
-from . import converter
 from .clients import Client
 from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
 from .downloadtools import DownloadPool, DownloadStream
@@ -91,14 +90,6 @@ class Media(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def convert(self, **kwargs):
-        """Convert this item between file formats.
-
-        :param kwargs:
-        """
-        pass
-
-    @abc.abstractmethod
     def __repr__(self):
         """Return a string representation of the item."""
         pass
@@ -155,7 +146,6 @@ class Track(Media):
     downloaded_ids: set = set()
     downloaded: bool = False
     tagged: bool = False
-    converted: bool = False
 
     quality: int
     folder: str
@@ -331,8 +321,7 @@ class Track(Media):
             decrypt_mqa_file(self.path, out_path, dl_info["enc_key"])
             self.path = out_path
 
-        if not kwargs.get("stay_temp", False):
-            self.move(self.final_path)
+        self.move(self.final_path)
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
 
@@ -508,18 +497,6 @@ class Track(Media):
         if album_meta is not None:
             self.meta.add_album_meta(album_meta)  # extend meta with album info
 
-        # TODO: make this cleaner
-        if self.converted:
-            if self.container == "FLAC":
-                audio = FLAC(self.path)
-            elif self.container in ("AAC", "ALAC", "MP4"):
-                audio = MP4(self.path)
-            elif self.container == "MP3":
-                audio = ID3()
-                try:
-                    audio = ID3(self.path)
-                except ID3NoHeaderError:
-                    audio = ID3()
         else:
             if self.quality in (2, 3, 4):
                 self.container = "FLAC"
@@ -574,73 +551,6 @@ class Track(Media):
             raise ValueError(f"Unknown container type: {audio}")
 
         self.tagged = True
-
-    def convert(self, codec: str = "ALAC", **kwargs):
-        """Convert the track to another codec.
-
-        Valid values for codec:
-            * FLAC
-            * ALAC
-            * MP3
-            * OPUS
-            * OGG
-            * VORBIS
-            * AAC
-            * M4A
-
-        :param codec: the codec to convert the track to
-        :type codec: str
-        :param kwargs:
-        """
-        if not self.downloaded:
-            logger.debug("Track not downloaded, skipping conversion")
-            secho("Track not downloaded, skipping conversion", fg="magenta")
-            return
-
-        CONV_CLASS = {
-            "FLAC": converter.FLAC,
-            "ALAC": converter.ALAC,
-            "MP3": converter.LAME,
-            "OPUS": converter.OPUS,
-            "OGG": converter.Vorbis,
-            "VORBIS": converter.Vorbis,
-            "AAC": converter.AAC,
-            "M4A": converter.AAC,
-        }
-
-        try:
-            self.container = codec.upper()
-        except AttributeError:
-            secho("Error: No audio codec chosen to convert to.", fg="red")
-            exit()
-
-        if not hasattr(self, "final_path"):
-            self.format_final_path(kwargs.get("restrict_filenames", False))
-
-        if not os.path.isfile(self.path):
-            logger.info("File %s does not exist. Skipping conversion.", self.path)
-            secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
-            return
-
-        assert (
-            self.container in CONV_CLASS
-        ), f"Invalid codec {codec}. Must be in {CONV_CLASS.keys()}"
-
-        engine = CONV_CLASS[self.container](
-            filename=self.path,
-            sampling_rate=kwargs.get("sampling_rate"),
-            remove_source=kwargs.get("remove_source", True),
-        )
-        engine.convert()
-        self.path = engine.final_fn
-        self.final_path = self.final_path.replace(
-            ext(self.quality, self.client.source), f".{engine.container}"
-        )
-
-        if not kwargs.get("stay_temp", False):
-            self.move(self.final_path)
-
-        self.converted = True
 
     @property
     def title(self) -> str:
@@ -814,16 +724,6 @@ class Video(Media):
             tracknumber=track["trackNumber"],
         )
 
-    def convert(self, *args, **kwargs):
-        """Return None.
-
-        Dummy method.
-
-        :param args:
-        :param kwargs:
-        """
-        pass
-
     @property
     def _progress_desc(self) -> str:
         return style(f"Video {self.tracknumber:02}", fg="blue")
@@ -966,9 +866,6 @@ class YoutubeVideo(Media):
         """
         pass
 
-    def convert(self, *args, **kwargs):
-        raise NotImplementedError
-
     def type(self):
         return "youtubevideo"
 
@@ -1047,16 +944,8 @@ class Tracklist(list):
         :param kwargs:
         """
         self._prepare_download(**kwargs)
-        if kwargs.get("conversion", False):
-            has_conversion = kwargs["conversion"]["enabled"]
-        else:
-            has_conversion = False
-            kwargs["stay_temp"] = False
 
-        if has_conversion:
-            target = self._download_and_convert_item
-        else:
-            target = self._download_item
+        target = self._download_item
 
         # TODO: make this function return the items that have not been downloaded
         failed_downloads: List[Tuple[str, str, str]] = []
@@ -1104,15 +993,6 @@ class Tracklist(list):
         if failed_downloads:
             raise PartialFailure(failed_downloads)
 
-    def _download_and_convert_item(self, item: Media, **kwargs):
-        """Download and convert an item.
-
-        :param item:
-        :param kwargs: should contain a `conversion` dict.
-        """
-        self._download_item(item, **kwargs)
-        item.convert(**kwargs["conversion"])
-
     def _download_item(self, item: Media, **kwargs: Any):
         """Abstract method.
 
@@ -1155,27 +1035,6 @@ class Tracklist(list):
         :param val:
         """
         self.__setitem__(key, val)
-
-    def convert(self, codec="ALAC", **kwargs):
-        """Convert every item in `self`.
-
-        Deprecated. Use _download_and_convert_item instead.
-
-        :param codec:
-        :param kwargs:
-        """
-        if sr := kwargs.get("sampling_rate"):
-            if sr < 44100:
-                logger.warning(
-                    "Sampling rate %d is lower than 44.1kHz."
-                    "This may cause distortion and ruin the track.",
-                    kwargs["sampling_rate"],
-                )
-            else:
-                logger.debug("Downsampling to %skHz", sr / 1000)
-
-        for track in self:
-            track.convert(codec, **kwargs)
 
     @classmethod
     def from_api(cls, item: dict, client: Client):

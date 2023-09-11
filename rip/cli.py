@@ -1,4 +1,3 @@
-import concurrent.futures
 import logging
 import os
 import threading
@@ -40,13 +39,6 @@ class DownloadCommand(Command):
             "file",
             "-f",
             "Path to a text file containing urls",
-            flag=False,
-            default="None",
-        ),
-        option(
-            "codec",
-            "-c",
-            "Convert the downloaded files to <cmd>ALAC</cmd>, <cmd>FLAC</cmd>, <cmd>MP3</cmd>, <cmd>AAC</cmd>, or <cmd>OGG</cmd>",
             flag=False,
             default="None",
         ),
@@ -428,146 +420,13 @@ class ConfigCommand(Command):
         library_folder = Path(next(items).text)
         os.remove(temp_file)
 
-        # cp ~/library/preferences/com.apple.music.plist music.plist
-        # plutil -convert xml1 music.plist
-        # cat music.plist | pbcopy
-
         self._config.file["downloads"]["folder"] = os.path.join(
             library_folder, "Automatically Add to Music.localized"
         )
 
-        conversion_config = self._config.file["conversion"]
-        conversion_config["enabled"] = True
-        conversion_config["codec"] = "ALAC"
-        conversion_config["sampling_rate"] = 48000
-        conversion_config["bit_depth"] = 24
-
         self._config.file["filepaths"]["folder_format"] = ""
         self._config.file["artwork"]["keep_hires_cover"] = False
         self._config.save()
-
-
-class ConvertCommand(Command):
-    name = "convert"
-    description = (
-        "A standalone tool that converts audio files to other codecs en masse."
-    )
-    arguments = [
-        argument(
-            "codec",
-            description="<cmd>FLAC</cmd>, <cmd>ALAC</cmd>, <cmd>OPUS</cmd>, <cmd>MP3</cmd>, or <cmd>AAC</cmd>.",
-        ),
-        argument(
-            "path",
-            description="The path to the audio file or a directory that contains audio files.",
-        ),
-    ]
-    options = [
-        option(
-            "sampling-rate",
-            "-s",
-            description="Downsample the tracks to this rate, in Hz.",
-            default=192000,
-            flag=False,
-        ),
-        option(
-            "bit-depth",
-            "-b",
-            description="Downsample the tracks to this bit depth.",
-            default=24,
-            flag=False,
-        ),
-        option(
-            "keep-source", "-k", description="Keep the original file after conversion."
-        ),
-    ]
-
-    help = (
-        "\nConvert all of the audio files in <path>/my/music</path> to MP3s\n"
-        "$ <cmd>rip convert MP3 /my/music</cmd>\n\n"
-        "Downsample the audio to 48kHz after converting them to ALAC\n"
-        "$ <cmd>rip convert --sampling-rate 48000 ALAC /my/music\n"
-    )
-
-    def handle(self):
-        from streamrip import converter
-
-        CODEC_MAP = {
-            "FLAC": converter.FLAC,
-            "ALAC": converter.ALAC,
-            "OPUS": converter.OPUS,
-            "MP3": converter.LAME,
-            "AAC": converter.AAC,
-        }
-
-        codec = self.argument("codec")
-        path = self.argument("path")
-
-        ConverterCls = CODEC_MAP.get(codec.upper())
-        if ConverterCls is None:
-            self.line(
-                f'<error>Invalid codec "{codec}". See </error><cmd>rip convert'
-                " -h</cmd>."
-            )
-            return 1
-
-        sampling_rate, bit_depth, keep_source = clean_options(
-            self.option("sampling-rate"),
-            self.option("bit-depth"),
-            self.option("keep-source"),
-        )
-
-        converter_args = {
-            "sampling_rate": sampling_rate,
-            "bit_depth": bit_depth,
-            "remove_source": not keep_source,
-        }
-
-        if os.path.isdir(path):
-            import itertools
-            from pathlib import Path
-
-            from tqdm import tqdm
-
-            dirname = path
-            audio_extensions = ("flac", "m4a", "aac", "opus", "mp3", "ogg")
-            path_obj = Path(dirname)
-            audio_files = (
-                path.as_posix()
-                for path in itertools.chain.from_iterable(
-                    (path_obj.rglob(f"*.{ext}") for ext in audio_extensions)
-                )
-            )
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = []
-                for file in audio_files:
-                    futures.append(
-                        executor.submit(
-                            ConverterCls(
-                                filename=os.path.join(dirname, file),
-                                **converter_args,
-                            ).convert
-                        )
-                    )
-                from streamrip.utils import TQDM_BAR_FORMAT
-
-                for future in tqdm(
-                    concurrent.futures.as_completed(futures),
-                    total=len(futures),
-                    desc="Converting",
-                    unit="track",
-                    bar_format=TQDM_BAR_FORMAT,
-                ):
-                    # Only show loading bar
-                    future.result()
-
-        elif os.path.isfile(path):
-            ConverterCls(filename=path, **converter_args).convert()
-        else:
-            self.line(
-                f'<error>Path <path>"{path}"</path> does not exist.</error>',
-            )
 
 
 class RepairCommand(Command):
@@ -750,7 +609,6 @@ def main():
     application.add(SearchCommand())
     application.add(DiscoverCommand())
     application.add(ConfigCommand())
-    application.add(ConvertCommand())
     application.add(RepairCommand())
     application.add(DatabaseCommand())
     application.run()

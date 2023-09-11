@@ -182,8 +182,8 @@ class RipCore(list):
         session = self.config.session
         logger.debug(session)
         # So that the dictionary isn't searched for the same keys multiple times
-        artwork, conversion, filepaths, metadata = (
-            session[key] for key in ("artwork", "conversion", "filepaths", "metadata")
+        artwork, filepaths, metadata = (
+            session[key] for key in ("artwork", "filepaths", "metadata")
         )
         concurrency = session["downloads"]["concurrency"]
         return {
@@ -196,8 +196,6 @@ class RipCore(list):
             "embed_cover_size": artwork["size"],
             "keep_hires_cover": artwork["keep_hires_cover"],
             "set_playlist_to_album": metadata["set_playlist_to_album"],
-            "stay_temp": conversion["enabled"],
-            "conversion": conversion,
             "concurrent_downloads": concurrency["enabled"],
             "max_connections": concurrency["max_connections"],
             "new_tracknumbers": metadata["new_playlist_tracknumbers"],
@@ -307,8 +305,6 @@ class RipCore(list):
 
             if isinstance(item, Track):
                 item.tag(exclude_tags=arguments["exclude_tags"])
-                if arguments["conversion"]["enabled"]:
-                    item.convert(**arguments["conversion"])
 
     def scrape(self, featured_list: str, max_items: int = 500):
         """Download all of the items in a Qobuz featured list.

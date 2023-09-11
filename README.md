@@ -9,9 +9,8 @@ A scriptable stream downloader for Qobuz, and Tidal.
 
 ## Features
 
-- Super fast, as it utilizes concurrent downloads and conversion
+- Super fast as it utilizes concurrent downloads
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz and Tidal
-- Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
 - Integration with `youtube-dl`
@@ -31,8 +30,6 @@ rip
 ```
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
-
-If you would like to use `streamrip`'s conversion capabilities or download TIDAL videos, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
 ### Streamrip beta
 
@@ -57,12 +54,6 @@ Download multiple albums from Qobuz
 
 ```bash
 rip url https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 https://www.qobuz.com/us-en/album/blue-train-john-coltrane/0060253764852
-```
-
-Download the album and convert it to `mp3`
-
-```bash
-rip url --codec mp3 https://open.qobuz.com/album/0060253780968
 ```
 
 To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
