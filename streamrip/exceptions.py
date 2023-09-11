@@ -87,10 +87,6 @@ class TooLargeCoverArt(Exception):
     """TooLargeCoverArt."""
 
 
-class BadEncoderOption(Exception):
-    """BadEncoderOption."""
-
-
 class NoResultsFound(Exception):
     """NoResultsFound."""
 
