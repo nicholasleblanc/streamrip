@@ -17,8 +17,6 @@ from tqdm import tqdm
 
 from streamrip.clients import (
     Client,
-    DeezerClient,
-    DeezloaderClient,
     QobuzClient,
     SoundCloudClient,
     TidalClient,
@@ -51,7 +49,6 @@ from .config import Config
 from .constants import (
     CONFIG_PATH,
     DB_PATH,
-    DEEZER_DYNAMIC_LINK_REGEX,
     FAILED_DB_PATH,
     LASTFM_URL_REGEX,
     QOBUZ_INTERPRETER_URL_REGEX,
@@ -59,8 +56,7 @@ from .constants import (
     URL_REGEX,
     YOUTUBE_URL_REGEX,
 )
-from .exceptions import DeezloaderFallback
-from .utils import extract_deezer_dynamic_link, extract_interpreter_url
+from .utils import extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 
@@ -92,9 +88,7 @@ class RipCore(list):
     clients = {
         "qobuz": QobuzClient(),
         "tidal": TidalClient(),
-        "deezer": DeezerClient(),
         "soundcloud": SoundCloudClient(),
-        "deezloader": DeezloaderClient(),
     }
 
     def __init__(
@@ -355,10 +349,7 @@ class RipCore(list):
         """
         client = self.clients[source]
         if not client.logged_in:
-            try:
-                self.login(client)
-            except DeezloaderFallback:
-                client = self.clients["deezloader"]
+            self.login(client)
 
         return client
 
@@ -368,16 +359,6 @@ class RipCore(list):
         :param client:
         """
         creds = self.config.creds(client.source)
-        if client.source == "deezer" and creds["arl"] == "":
-            if self.config.session["deezer"]["deezloader_warnings"]:
-                secho(
-                    "Falling back to Deezloader (unstable). If you have a subscription, run ",
-                    nl=False,
-                    fg="yellow",
-                )
-                secho("rip config --deezer ", nl=False, bold=True)
-                secho("to log in.", fg="yellow")
-            raise DeezloaderFallback
 
         while True:
             try:
@@ -432,7 +413,6 @@ class RipCore(list):
             https://open.qobuz.com/type/id
             https://play.qobuz.com/type/id
 
-            https://www.deezer.com/us/type/id
             https://tidal.com/browse/type/id
 
         :raises exceptions.ParsingError:
@@ -452,19 +432,7 @@ class RipCore(list):
             )
             url = QOBUZ_INTERPRETER_URL_REGEX.sub("", url)
 
-        dynamic_urls = DEEZER_DYNAMIC_LINK_REGEX.findall(url)
-        if dynamic_urls:
-            secho(
-                "Extracting IDs from Deezer dynamic link. Use urls "
-                "of the form https://www.deezer.com/{country}/{type}/{id} for "
-                "faster processing.",
-                fg="yellow",
-            )
-            parsed.extend(
-                ("deezer", *extract_deezer_dynamic_link(url)) for url in dynamic_urls
-            )
-
-        parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal, Deezer
+        parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal
         soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
 
         if soundcloud_urls:
@@ -499,7 +467,6 @@ class RipCore(list):
         QUERY_FORMAT: Dict[str, str] = {
             "tidal": "{title}",
             "qobuz": "{title} {artist}",
-            "deezer": "{title} {artist}",
             "soundcloud": "{title} {artist}",
         }
 
@@ -641,11 +608,6 @@ class RipCore(list):
         logger.debug("searching for %s", query)
 
         client = self.get_client(source)
-
-        if isinstance(client, DeezloaderClient) and media_type == "featured":
-            raise IneligibleError(
-                "Must have premium Deezer account to access editorial lists."
-            )
 
         results = client.search(query, media_type)
 
@@ -908,26 +870,6 @@ class RipCore(list):
                 getpass(prompt="").encode("utf-8")
             ).hexdigest()
 
-            self.config.save()
-            secho(
-                f'Credentials saved to config file at "{self.config._path}"',
-                fg="green",
-            )
-        elif source == "deezer":
-            secho(
-                "If you're not sure how to find the ARL cookie, see the instructions at ",
-                italic=True,
-                nl=False,
-                dim=True,
-            )
-            secho(
-                "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
-                underline=True,
-                italic=True,
-                fg="blue",
-            )
-
-            self.config.file["deezer"]["arl"] = input(style("ARL: ", fg="green"))
             self.config.save()
             secho(
                 f'Credentials saved to config file at "{self.config._path}"',
