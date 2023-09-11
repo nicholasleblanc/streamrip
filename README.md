@@ -106,6 +106,24 @@ For more in-depth information about `streamrip`, see the help pages and the [wik
 All contributions are appreciated! You can help out the project by opening an issue
 or by submitting code.
 
+### Setup
+
+Requirements:
+
+- Python v3.8+
+- [poetry](https://python-poetry.org/)
+
+```
+poetry install
+```
+
+### Running in development
+
+```
+poetry run rip search --type=artist "lil wayne"
+poetry run flake8
+```
+
 ### Issues
 
 If you're opening an issue **use the Feature Request or Bug Report templates properly**. This ensures
