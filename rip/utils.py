@@ -1,7 +1,6 @@
 """Utility functions for RipCore."""
 
 import re
-from typing import Tuple
 
 from streamrip.constants import AGENT
 from streamrip.utils import gen_threadsafe_session
@@ -26,4 +25,3 @@ def extract_interpreter_url(url: str) -> str:
         "Unable to extract artist id from interpreter url. Use a "
         "url that contains an artist id."
     )
-
