@@ -13,7 +13,6 @@ A scriptable stream downloader for Qobuz, and Tidal.
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz and Tidal
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
-- Integration with `youtube-dl`
 
 ## Installation
 

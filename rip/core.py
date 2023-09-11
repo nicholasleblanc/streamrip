@@ -33,7 +33,6 @@ from streamrip.media import (
     Track,
     Tracklist,
     Video,
-    YoutubeVideo,
 )
 from streamrip.utils import TQDM_DEFAULT_THEME, set_progress_bar_theme
 
@@ -45,7 +44,6 @@ from .constants import (
     FAILED_DB_PATH,
     QOBUZ_INTERPRETER_URL_REGEX,
     URL_REGEX,
-    YOUTUBE_URL_REGEX,
 )
 from .utils import extract_interpreter_url
 
@@ -138,12 +136,6 @@ class RipCore(list):
         else:
             raise Exception(f"Urls has invalid type {type(urls)}")
 
-        # youtube is handled by youtube-dl, so much of the
-        # processing is not necessary
-        youtube_urls = YOUTUBE_URL_REGEX.findall(url)
-        if youtube_urls != []:
-            self.extend(YoutubeVideo(u) for u in youtube_urls)
-
         parsed = self.parse_urls(url)
         if not parsed and len(self) == 0:
             raise ParsingError(f"Cannot find urls in text: {url}")
@@ -201,10 +193,6 @@ class RipCore(list):
             "new_tracknumbers": metadata["new_playlist_tracknumbers"],
             "download_videos": session["tidal"]["download_videos"],
             "download_booklets": session["qobuz"]["download_booklets"],
-            "download_youtube_videos": session["youtube"]["download_videos"],
-            "youtube_video_downloads_folder": session["youtube"][
-                "video_downloads_folder"
-            ],
             "add_singles_to_folder": filepaths["add_singles_to_folder"],
             "max_artwork_width": int(artwork["max_width"]),
             "max_artwork_height": int(artwork["max_height"]),
@@ -258,10 +246,6 @@ class RipCore(list):
                 arguments["parent_folder"] = self.__get_source_subdir(
                     item.client.source
                 )
-
-            if item is YoutubeVideo:
-                item.download(**arguments)
-                continue
 
             arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):

@@ -43,14 +43,6 @@ refresh_token = ""
 # in again using `rip config --tidal`
 token_expiry = ""
 
-[youtube]
-# Only 0 is available for now
-quality = 0
-# Download the video along with the audio
-download_videos = false
-# The path to download the videos to
-video_downloads_folder = ""
-
 # This stores a list of item IDs so that repeats are not downloaded.
 [database.downloads]
 enabled = true
@@ -118,7 +110,6 @@ restrict_characters = false
 # Truncate the filename if it is greater than 120 characters
 # Setting this to false may cause downloads to fail on some systems
 truncate = true
-
 
 [theme]
 # Options: "dainty" or "plain"

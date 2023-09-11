@@ -24,4 +24,3 @@ URL_REGEX = re.compile(
 QOBUZ_INTERPRETER_URL_REGEX = re.compile(
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"
 )
-YOUTUBE_URL_REGEX = re.compile(r"https://www\.youtube\.com/watch\?v=[-\w]+")
