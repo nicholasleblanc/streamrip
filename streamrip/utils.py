@@ -67,7 +67,6 @@ def concat_audio_files(paths: List[str], out: str, ext: str):
                 "panic",
                 outpaths[i],
             ),
-            # capture_output=True,
         )
         if proc.returncode != 0:
             raise FfmpegError(proc.stderr)
@@ -192,7 +191,6 @@ def clean_format(formatter: str, format_info, restrict: bool = False):
     :param kwargs:
     """
     fmt_keys = filter(None, (i[1] for i in Formatter().parse(formatter)))
-    # fmt_keys = (i[1] for i in Formatter().parse(formatter) if i[1] is not None)
 
     logger.debug("Formatter keys: %s", formatter)
 

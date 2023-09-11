@@ -747,11 +747,6 @@ class Video(Media):
         import m3u8
         import requests
 
-        # secho(
-        #     f"Downloading {self.title} (Video). This may take a while.",
-        #     fg="blue",
-        # )
-
         self.parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         url = self.client.get_file_url(self.id, video=True)
 

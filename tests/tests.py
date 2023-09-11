@@ -19,9 +19,6 @@ def reset_config():
     )
     out, err = p.communicate()
     cfg_path = out.decode("utf-8").strip()
-    # cfg_path = re.search(
-    #     r"(/[\w\d\s]+(?:/[\w\d \.]+)*)", out.decode("utf-8")
-    # ).group(1)
     new_cfg_path = f"{cfg_path}.tmp"
     shutil.copy(cfg_path, new_cfg_path)
     subprocess.Popen(["rip", "config", "--update"])

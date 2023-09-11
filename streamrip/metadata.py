@@ -250,9 +250,6 @@ class TrackMetadata:
         if not hasattr(self, "_title"):
             return None
 
-        # if self.explicit:
-        #     return f"{self._title} (Explicit)"
-
         return self._title
 
     @title.setter
