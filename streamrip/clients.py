@@ -5,7 +5,6 @@ import concurrent.futures
 import hashlib
 import json
 import logging
-import re
 import time
 from abc import ABC, abstractmethod
 from typing import Generator, Optional, Sequence, Tuple, Union
@@ -520,7 +519,7 @@ class TidalClient(Client):
 
         :param query:
         :type query: str
-        :param media_type: track, album, playlist, or video.
+        :param media_type: track, album, or playlist.
         :type media_type: str
         :param limit: max is 100
         :type limit: int
@@ -532,17 +531,13 @@ class TidalClient(Client):
         }
         return self._api_request(f"search/{media_type}s", params=params)
 
-    def get_file_url(self, track_id, quality: int = 3, video=False):
-        """Get the file url for a track or video given an id.
+    def get_file_url(self, track_id, quality: int = 3):
+        """Get the file url for a track given an id.
 
-        :param track_id: or video id
-        :param quality: 0, 1, 2, or 3. It is irrelevant for videos.
+        :param track_id:
+        :param quality: 0, 1, 2, or 3.
         :type quality: int
-        :param video:
         """
-        if video:
-            return self._get_video_stream_url(track_id)
-
         params = {
             "audioquality": get_quality(min(quality, TIDAL_MAX_Q), self.source),
             "playbackmode": "STREAM",
@@ -740,7 +735,7 @@ class TidalClient(Client):
 
         :param item_id:
         :type item_id: str
-        :param media_type: track, album, playlist, or video.
+        :param media_type: track, album, or playlist.
         :type media_type: str
         :rtype: dict
         """
@@ -788,36 +783,6 @@ class TidalClient(Client):
         r = self.session.get(f"{TIDAL_BASE}/{path}", params=params)
         r.raise_for_status()
         return r.json()
-
-    def _get_video_stream_url(self, video_id: str) -> str:
-        """Get the HLS video stream url.
-
-        The stream is downloaded using ffmpeg for now.
-
-        :param video_id:
-        :type video_id: str
-        :rtype: str
-        """
-        params = {
-            "videoquality": "HIGH",
-            "playbackmode": "STREAM",
-            "assetpresentation": "FULL",
-        }
-        resp = self._api_request(
-            f"videos/{video_id}/playbackinfopostpaywall", params=params
-        )
-        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        available_urls = self.session.get(manifest["urls"][0])
-        available_urls.encoding = "utf-8"
-
-        STREAM_URL_REGEX = re.compile(
-            r"#EXT-X-STREAM-INF:BANDWIDTH=\d+,AVERAGE-BANDWIDTH=\d+,CODECS=\"(?!jpeg)[^\"]+\",RESOLUTION=\d+x\d+\n(.+)"
-        )
-
-        # Highest resolution is last
-        *_, last_match = STREAM_URL_REGEX.finditer(available_urls.text)
-
-        return last_match.group(1)
 
     def _api_post(self, url, data, auth=None):
         """Post to the Tidal API.

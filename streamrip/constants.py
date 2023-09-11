@@ -154,8 +154,7 @@ TIDAL_Q_MAP = {
 }
 
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
-# video only for tidal
-MEDIA_TYPES = {"track", "album", "artist", "label", "playlist", "video"}
+MEDIA_TYPES = {"track", "album", "artist", "label", "playlist"}
 
 # used to homogenize cover size keys
 COVER_SIZES = ("thumbnail", "small", "large", "original")

@@ -30,8 +30,6 @@ secrets = []
 [tidal]
 # 0: 256kbps AAC, 1: 320kbps AAC, 2: 16/44.1 "HiFi" FLAC, 3: 24/44.1 "MQA" FLAC
 quality = 3
-# This will download videos included in Video Albums.
-download_videos = true
 
 # Do not change any of the fields below
 user_id = ""

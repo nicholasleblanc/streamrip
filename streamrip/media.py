@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 from tempfile import gettempdir
 from typing import (
     Any,
@@ -29,7 +28,7 @@ from pathvalidate import sanitize_filepath
 
 from .clients import Client
 from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
-from .downloadtools import DownloadPool, DownloadStream
+from .downloadtools import DownloadStream
 from .exceptions import (
     InvalidQuality,
     InvalidSourceError,
@@ -48,7 +47,6 @@ from .utils import (
     get_container,
     get_cover_urls,
     get_stats_from_quality,
-    get_tqdm_bar,
     safe_get,
     tidal_cover_url,
     tqdm_stream,
@@ -619,157 +617,6 @@ class Track(Media):
         return True
 
 
-class Video(Media):
-    """Only for Tidal."""
-
-    id = None
-    downloaded_ids: set = set()
-
-    def __init__(self, client: Client, id: str, **kwargs):
-        """Initialize a Video object.
-
-        :param client:
-        :type client: Client
-        :param id: The TIDAL Video ID
-        :type id: str
-        :param kwargs: title, explicit, and tracknumber
-        """
-        self.id = id
-        self.client = client
-
-    def load_meta(self, **kwargs):
-        """Given an id at contruction, get the metadata of the video."""
-        resp = self.client.get(self.id, "video")
-        self.title = resp["title"]
-        self.explicit = resp["explicit"]
-        self.tracknumber = resp["trackNumber"]
-
-    def download(self, **kwargs):
-        """Download the Video.
-
-        :param kwargs:
-        """
-
-        if not kwargs.get("download_videos", True):
-            return
-
-        import m3u8
-        import requests
-
-        self.parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
-        url = self.client.get_file_url(self.id, video=True)
-
-        parsed_m3u = m3u8.loads(requests.get(url).text)
-        # Asynchronously download the streams
-
-        with DownloadPool(segment.uri for segment in parsed_m3u.segments) as pool:
-            bar = get_tqdm_bar(len(pool), desc=self._progress_desc, unit="Chunk")
-
-            def update_tqdm_bar():
-                bar.update(1)
-
-            pool.download(callback=update_tqdm_bar)
-
-            # Put the filenames in a tempfile that ffmpeg
-            # can read from
-            file_list_path = os.path.join(gettempdir(), "__streamrip_video_files")
-            with open(file_list_path, "w") as file_list:
-                text = "\n".join(f"file '{path}'" for path in pool.files)
-                file_list.write(text)
-
-            # Use ffmpeg to concat the files
-            subprocess.call(
-                (
-                    "ffmpeg",
-                    "-f",
-                    "concat",
-                    "-safe",
-                    "0",
-                    "-i",
-                    file_list_path,
-                    "-c",
-                    "copy",
-                    "-loglevel",
-                    "panic",
-                    self.path,
-                )
-            )
-
-            os.remove(file_list_path)
-
-    def tag(self, *args, **kwargs):
-        """Return False.
-
-        This is a dummy method.
-
-        :param args:
-        :param kwargs:
-        """
-        return False
-
-    @classmethod
-    def from_album_meta(cls, track: dict, client: Client):
-        """Return a new Video object given an album API response.
-
-        :param track: track dict from album
-        :type track: dict
-        :param client:
-        :type client: Client
-        """
-        return cls(
-            client,
-            id=track["id"],
-            title=track["title"],
-            explicit=track["explicit"],
-            tracknumber=track["trackNumber"],
-        )
-
-    @property
-    def _progress_desc(self) -> str:
-        return style(f"Video {self.tracknumber:02}", fg="blue")
-
-    @property
-    def path(self) -> str:
-        """Get path to download the mp4 file.
-
-        :rtype: str
-        """
-        os.makedirs(self.parent_folder, exist_ok=True)
-        fname = self.title
-        if self.explicit:
-            fname = f"{fname} (Explicit)"
-        if self.tracknumber is not None:
-            fname = f"{self.tracknumber:02}. {fname}"
-
-        return os.path.join(self.parent_folder, f"{fname}.mp4")
-
-    @property
-    def type(self) -> str:
-        """Return "video".
-
-        :rtype: str
-        """
-        return "video"
-
-    def __str__(self) -> str:
-        """Return the title.
-
-        :rtype: str
-        """
-        return self.title
-
-    def __repr__(self) -> str:
-        """Return a string representation of self.
-
-        :rtype: str
-        """
-        return f"<Video - {self.title}>"
-
-    def __bool__(self):
-        """Return True."""
-        return True
-
-
 class Booklet:
     """Only for Qobuz."""
 
@@ -1111,7 +958,7 @@ class Album(Tracklist, Media):
         if not self.get("streamable", False):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")
 
-        self._load_tracks(resp, kwargs.get("download_videos", True))
+        self._load_tracks(resp)
         self.loaded = True
 
     @classmethod
@@ -1197,7 +1044,7 @@ class Album(Tracklist, Media):
         """Download an item.
 
         :param track: The item.
-        :type track: Union[Track, Video]
+        :type track: Union[Track]
         :param quality:
         :type quality: int
         :param kwargs:
@@ -1240,7 +1087,7 @@ class Album(Tracklist, Media):
         meta.id = resp["id"]
         return meta
 
-    def _load_tracks(self, resp, download_videos: bool = True):
+    def _load_tracks(self, resp):
         """Load the tracks into self from an API response.
 
         This uses a classmethod to convert an item into a Track object, which
@@ -1248,10 +1095,7 @@ class Album(Tracklist, Media):
         """
         logging.debug("Loading %d tracks to album", self.tracktotal)
         for track in _get_tracklist(resp, self.client.source):
-            if track.get("type") == "Music Video":
-                if download_videos:
-                    self.append(Video.from_album_meta(track, self.client))
-            else:
+            if track.get("type") != "Music Video":
                 self.append(
                     Track.from_album_meta(
                         album=self.meta, track=track, client=self.client

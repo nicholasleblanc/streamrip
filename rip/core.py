@@ -32,7 +32,6 @@ from streamrip.media import (
     Playlist,
     Track,
     Tracklist,
-    Video,
 )
 from streamrip.utils import TQDM_DEFAULT_THEME, set_progress_bar_theme
 
@@ -56,7 +55,6 @@ Media = Union[
     Type[Artist],
     Type[Track],
     Type[Label],
-    Type[Video],
 ]
 MEDIA_CLASS: Dict[str, Media] = {
     "album": Album,
@@ -64,7 +62,6 @@ MEDIA_CLASS: Dict[str, Media] = {
     "artist": Artist,
     "track": Track,
     "label": Label,
-    "video": Video,
 }
 
 DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
@@ -191,7 +188,6 @@ class RipCore(list):
             "concurrent_downloads": concurrency["enabled"],
             "max_connections": concurrency["max_connections"],
             "new_tracknumbers": metadata["new_playlist_tracknumbers"],
-            "download_videos": session["tidal"]["download_videos"],
             "download_booklets": session["qobuz"]["download_booklets"],
             "add_singles_to_folder": filepaths["add_singles_to_folder"],
             "max_artwork_width": int(artwork["max_width"]),
