@@ -16,16 +16,16 @@ A scriptable stream downloader for Qobuz, and Tidal.
 
 ## Installation
 
-First, ensure [Python](https://www.python.org/downloads/) (version 3.8 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. If you are on Windows, install [Microsoft Visual C++ Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/). Then run the following in the command line:
+Create the docker image locally:
 
 ```bash
-pip3 install streamrip --upgrade
+docker build -t rip .
 ```
 
-When you type
+Then execute a command against it
 
 ```bash
-rip
+docker run -v ./tests/config:/config -v ./rip/config.toml:/config/config.toml -v ./tests/downloads:/downloads -it rip rip --help
 ```
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
@@ -113,13 +113,13 @@ Requirements:
 - Python v3.8+
 - [poetry](https://python-poetry.org/)
 
-```
+```bash
 poetry install
 ```
 
 ### Running in development
 
-```
+```bash
 poetry run rip search --type=artist "lil wayne"
 poetry run flake8
 ```

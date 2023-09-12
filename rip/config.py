@@ -31,7 +31,7 @@ class Config:
     values.
     """
 
-    default_config_path = os.path.join(os.path.dirname(__file__), "config.toml")
+    default_config_path = os.getenv('RIP_CONFIG_FILE', os.path.join(os.path.dirname(__file__), "config.toml"))
 
     with open(default_config_path) as cfg:
         defaults: Dict[str, Any] = tomlkit.parse(cfg.read().strip())

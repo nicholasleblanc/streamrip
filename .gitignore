@@ -20,3 +20,7 @@ StreamripDownloads
 *test.py
 /.mypy_cache
 .DS_Store
+tests/config/*
+tests/downloads/*
+!tests/config/.gitkeep
+!tests/downloads/.gitkeep

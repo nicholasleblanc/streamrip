@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  rip:
+    container_name: rip
+    image: rip:latest
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads

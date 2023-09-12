@@ -1,6 +1,6 @@
 [downloads]
 # Folder where tracks are downloaded to
-folder = ""
+folder = "/downloads"
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
 
@@ -11,11 +11,11 @@ enabled = true
 # The maximum number of tracks to download at once
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
-max_connections = 3
+max_connections = 5
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
-quality = 3
+quality = 4
 # This will download booklet pdfs that are included with some albums
 download_booklets = true
 
@@ -44,13 +44,13 @@ token_expiry = ""
 # This stores a list of item IDs so that repeats are not downloaded.
 [database.downloads]
 enabled = true
-path = ""
+path = "/config/downloads.db"
 
 # If a download fails, the item ID is stored here. Then, `rip repair` can be
 # called to retry the downloads
 [database.failed_downloads]
 enabled = true
-path = ""
+path = "/config/failed_downloads.db"
 
 # Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
 [filters]
@@ -59,7 +59,7 @@ extras = false
 # Picks the highest quality out of albums with identical titles.
 repeats = false
 # Remove EPs and Singles
-non_albums = false
+non_albums = true
 # Remove albums whose artist is not the one requested
 features = false
 # Skip non studio albums
@@ -67,9 +67,9 @@ non_studio_albums = false
 # Only download remastered albums
 non_remaster = false
 # Albums that are greater than 3 tracks
-album_less_than_3_tracks = false
+album_less_than_3_tracks = true
 # Remove censored albums when an explicit version exists
-ignore_censored_album_when_explicit_exists = false
+ignore_censored_album_when_explicit_exists = true
 
 [artwork]
 # Write the image to the audio file
