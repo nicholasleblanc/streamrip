@@ -1,9 +1,6 @@
 # streamrip
 
-[![Downloads](https://pepy.tech/badge/streamrip)](https://pepy.tech/project/streamrip)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
-
-A scriptable stream downloader for Qobuz, and Tidal.
+A scriptable stream downloader for Qobuz and Tidal.
 
 ![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
@@ -14,30 +11,58 @@ A scriptable stream downloader for Qobuz, and Tidal.
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
 
-## Installation
+## Usage
 
-Create the docker image locally:
+Firstly, create the docker image locally:
 
 ```bash
 docker build -t rip .
 ```
 
-Then execute a command against it
+Secondly, you will need to ensure you have a directory for your config and downloads. We need to ensure we have a copy of `config.toml` in the config directory.
 
 ```bash
-docker run -v ./tests/config:/config -v ./rip/config.toml:/config/config.toml -v ./tests/downloads:/downloads -it rip rip --help
+mkdir config
+cp rip/config.toml config
+mkdir downloads
 ```
 
-it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
+Finally, use docker to access the image. Here are some example snippets to help you get started creating a container.
 
-### Streamrip beta
+### docker-compose
 
-If you want to get access to the latest and greatest features without waiting for a new release, install
-from the `dev` branch with the following command
+```yaml
+---
+version: '3.8'
+
+services:
+  rip:
+    container_name: rip
+    image: rip:latest
+    restart: no
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+```
+
+### docker cli (recommended)
 
 ```bash
-pip3 install git+https://github.com/nathom/streamrip.git@dev
+docker run \
+  -v /path/to/config:/config \
+  -v /path/to/downloads:/downloads \
+  -it rip
+  rip --help
 ```
+
+## Parameters
+
+Container images are configured using parameters passed at runtime (such as those above). These parameters are separated by a colon and indicate `<external>:<internal>` respectively. For example, `-p 8080:80` would expose port `80` from inside the container to be accessible from the host's IP on port `8080` outside the container.
+
+|    Parameter    | Function                                                           |
+| :-------------: | ------------------------------------------------------------------ |
+|  `-v /config`   | Rip configuration. Should at minimum contain a `config.toml` file. |
+| `-v /downloads` | Any music downloaded will be stored in this folder.                |
 
 ## Example Usage
 
@@ -124,34 +149,13 @@ poetry run rip search --type=artist "lil wayne"
 poetry run flake8
 ```
 
-### Issues
-
-If you're opening an issue **use the Feature Request or Bug Report templates properly**. This ensures
-that I have all of the information necessary to debug the issue. If you do not follow the templates,
-**I will silently close the issue** and you'll have to deal with it yourself.
-
-### Code
-
-If you're new to Git, follow these steps to open your first Pull Request (PR):
-
-- Fork this repository
-- Clone the new repository
-- Commit your changes
-- Open a pull request to the `dev` branch
-
-Please document any functions or obscure lines of code.
-
-### The Wiki
-
-To help out `streamrip` users that may be having trouble, consider contributing some information to the wiki.
-Nothing is too obvious and everything is appreciated.
-
 ## Acknowledgements
 
 Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this project, and the previous projects that made this one possible.
 
 `streamrip` was inspired by:
 
+- [streamrip](ttps://github.com/nathom/streamrip)
 - [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
 - [Qo-DL Reborn](https://github.com/badumbass/Qo-DL-Reborn)
 - [Tidal-Media-Downloader](https://github.com/yaronzz/Tidal-Media-Downloader)
@@ -159,11 +163,4 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 
 ## Disclaimer
 
-I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, and Tidal APIs.
-
-## Donations/Sponsorship
-
-<a href="https://www.buymeacoffee.com/nathom" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-
-Consider contributing some funds [here](https://www.buymeacoffee.com/nathom), which will go towards holding
-the premium subscriptions that I need to debug and improve streamrip. Thanks for your support!
+I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz and Tidal APIs.
